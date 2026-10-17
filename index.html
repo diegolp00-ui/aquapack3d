@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AQUAPACK 3D — Sistema Modular de Captación y Reutilización de Agua de Lluvia</title>
+  <style>
+    :root {
+      --bg-dark: #0b131e;
+      --bg-panel: rgba(15, 25, 38, 0.88);
+      --aqua-blue: #0a76be;
+      --aqua-cyan: #29b6f6;
+      --pack-green: #4cb22b;
+      --text-main: #f0f6fc;
+      --text-muted: #9bb0c4;
+      --border-col: rgba(41, 182, 246, 0.25);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      overflow-x: hidden;
+    }
+
+    /* HEADER */
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 68px;
+      background: rgba(9, 17, 28, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-col);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      z-index: 100;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-logo {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--aqua-blue), var(--pack-green));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 20px; color: #fff;
+      box-shadow: 0 0 16px rgba(41, 182, 246, 0.45);
+    }
+    .brand-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    .brand-title .aqua { color: var(--aqua-cyan); }
+    .brand-title .pack { color: var(--pack-green); }
+    .brand-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: block;
+    }
+    .nav-pills {
+      display: flex;
+      gap: 10px;
+    }
+    .nav-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border-col);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .nav-btn:hover, .nav-btn.active {
+      background: var(--aqua-blue);
+      border-color: var(--aqua-cyan);
+      box-shadow: 0 0 14px rgba(41, 182, 246, 0.4);
+    }
+
+    /* 3D VIEWPORT CONTAINER */
+    #viewer-section {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      padding-top: 68px;
+      display: flex;
+    }
+    #canvas-container {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      background: radial-gradient(circle at 50% 35%, #1e3246 0%, #0b131e 100%);
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      outline: none;
+    }
+
+    /* FLOATING STAGE SELECTOR BAR (BOTTOM) */
+    .stage-bar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(12px);
+      padding: 10px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--border-col);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      z-index: 20;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 92vw;
+    }
+    .stage-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text-main);
+      padding: 9px 15px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .stage-btn:hover, .stage-btn.active {
+      background: linear-gradient(135deg, var(--aqua-blue), #0d5c94);
+      border-color: var(--aqua-cyan);
+      transform: translateY(-2px);
+    }
+    .stage-num {
+      background: var(--pack-green);
+      color: #fff;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    /* RIGHT SIDEBAR: INTERACTIVE HYDRAULIC CONTROLS & INFO */
+    .control-panel {
+      width: 360px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      border-left: 1px solid var(--border-col);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+      z-index: 25;
+    }
+    .panel-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .panel-card h3 {
+      font-size: 15px;
+      color: var(--aqua-cyan);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-card p {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+    .control-group {
+      margin-top: 12px;
+    }
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      margin-bottom: 6px;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--aqua-cyan);
+      cursor: pointer;
+    }
+    .toggle-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .action-btn {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-col);
+      background: rgba(10, 118, 190, 0.25);
+      color: #fff;
+      font-weight: 600;
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .action-btn:hover {
+      background: var(--aqua-blue);
+    }
+    .action-btn.green {
+      background: rgba(76, 178, 43, 0.25);
+      border-color: rgba(76, 178, 43, 0.5);
+    }
+    .action-btn.green:hover {
+      background: var(--pack-green);
+    }
+
+    /* TELEMETRY METRICS */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .metric-box {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    .metric-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--aqua-cyan);
+    }
+    .metric-lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* GALLERY & VIDEO SECTION */
+    #media-section {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 64px 24px;
+    }
+    .section-title {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+    .section-sub {
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      font-size: 15px;
+    }
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 24px;
+    }
+    .media-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-col);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .media-card img, .media-card video {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+      display: block;
+      background: #000;
+    }
+    .media-card-body {
+      padding: 16px;
+    }
+    .media-card-body h4 {
+      font-size: 16px;
+      margin-bottom: 6px;
+      color: var(--aqua-cyan);
+    }
+    .media-card-body p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .hint-badge {
+      position: absolute;
+      top: 18px;
+      left: 20px;
+      background: rgba(9, 17, 28, 0.78);
+      border: 1px solid var(--border-col);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    @media (max-width: 900px) {
+      #viewer-section { flex-direction: column; height: auto; }
+      #canvas-container { height: 65vh; }
+      .control-panel { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-logo">💧</div>
+      <div>
+        <div class="brand-title"><span class="aqua">AQUA</span><span class="pack">PACK</span> 3D</div>
+        <span class="brand-sub">Sistema Modular para la Captación y Reutilización de Agua de Lluvia — UTP</span>
+      </div>
+    </div>
+    <div class="nav-pills">
+      <a href="#viewer-section" class="nav-btn active">Visor 3D Interactivo</a>
+      <a href="#media-section" class="nav-btn">Renders 2K y Video</a>
+    </div>
+  </header>
+
+  <section id="viewer-section">
+    <div id="canvas-container">
+      <div class="hint-badge">
+        🖱️ <b>Clic Izquierdo:</b> Rotar 360° &nbsp;|&nbsp; <b>Rueda:</b> Zoom &nbsp;|&nbsp; <b>Clic Derecho:</b> Desplazar
+      </div>
+
+      <div class="stage-bar">
+        <button class="stage-btn active" onclick="focusStage(0, this)">Vista General</button>
+        <button class="stage-btn" onclick="focusStage(1, this)"><span class="stage-num">1</span> Captación</button>
+        <button class="stage-btn" onclick="focusStage(2, this)"><span class="stage-num">2</span> Filtración</button>
+        <button class="stage-btn" onclick="focusStage(3, this)"><span class="stage-num">3</span> Almacenamiento</button>
+        <button class="stage-btn" onclick="focusStage(4, this)"><span class="stage-num">4</span> Filtro Impurezas</button>
+        <button class="stage-btn" onclick="focusStage(5, this)"><span class="stage-num">5</span> Reutilización</button>
+      </div>
+    </div>
+
+    <aside class="control-panel">
+      <div class="panel-card">
+        <h3 id="stage-title">Sistema Modular AQUAPACK</h3>
+        <p id="stage-desc">
+          Explora en 3D el ciclo hidráulico completo: captación pluvial en techo corrugado, decantación en el módulo superior, almacenamiento modular, filtrado multicapa (carbón activado, sílice y grava) y riego reutilizado.
+        </p>
+      </div>
+
+      <div class="panel-card">
+        <h3>Controles Hidráulicos en Tiempo Real</h3>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>🌧️ Intensidad de Lluvia</span>
+            <span id="lbl-rain">100%</span>
+          </div>
+          <input type="range" id="slider-rain" min="0" max="100" value="100" oninput="updateSim()" />
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>💧 Nivel del Tanque Modular</span>
+            <span id="lbl-level">85%</span>
+          </div>
+          <input type="range" id="slider-level" min="10" max="100" value="85" oninput="updateSim()" />
+        </div>
+
+        <div class="toggle-row">
+          <button class="action-btn green" id="btn-valve" onclick="toggleValve()">🔧 Válvula: ABIERTA</button>
+          <button class="action-btn" id="btn-anim" onclick="toggleAutoCycle()">⏸️ Ciclo Auto</button>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <h3>Telemetría del Sistema</h3>
+        <div class="telemetry-grid">
+          <div class="metric-box">
+            <div class="metric-val" id="met-flow">18.4 L/min</div>
+            <div class="metric-lbl">Caudal Captado</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-val" id="met-vol">1,700 L</div>
+            <div class="metric-lbl">Agua Almacenada</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-val">4 Capas</div>
+            <div class="metric-lbl">Lecho Filtrante</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-val" id="met-status" style="color:#4cb22b;">ACTIVO</div>
+            <div class="metric-lbl">Riego Reutilizado</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <h3>Líneas de Producto (UTP)</h3>
+        <p style="margin-bottom:6px;">• <b>AQUAPACK Base:</b> Sistema modular escalable para empresas e instituciones.</p>
+        <p style="margin-bottom:6px;">• <b>AQUAPACK Solar:</b> Integra paneles solares para bombas y sensores IoT.</p>
+        <p>• <b>AQUAPACK Container:</b> Unidad prefabricada transportable de rápida instalación.</p>
+      </div>
+    </aside>
+  </section>
+
+  <section id="media-section">
+    <h2 class="section-title">Galería de Renders 2K y Animación en Blender 4.5</h2>
+    <p class="section-sub">Renders generados directamente del archivo maestro <code>aquapack_master.blend</code> en resolución 2560×1440 y secuencia animada MP4.</p>
+
+    <div class="media-grid">
+      <div class="media-card">
+        <video src="./aquapack_ciclo_agua_animacion.mp4" controls autoplay loop muted playsinline></video>
+        <div class="media-card-body">
+          <h4>Video Animado del Ciclo del Agua (MP4)</h4>
+          <p>Simulación continua de 180 fotogramas: captación en tejado, llenado progresivo de cámaras modulares, filtrado y riego.</p>
+        </div>
+      </div>
+
+      <div class="media-card">
+        <img src="./render_01_vista_general_hd.png" alt="Vista General AQUAPACK" />
+        <div class="media-card-body">
+          <h4>Vista General Arquitectónica (2560×1440)</h4>
+          <p>Integración completa del sistema AQUAPACK junto a la vivienda, cartel corporativo y zócalo de etapas.</p>
+        </div>
+      </div>
+
+      <div class="media-card">
+        <img src="./render_02_detalle_tanque_filtracion.png" alt="Detalle Tanque y Filtración" />
+        <div class="media-card-body">
+          <h4>Detalle Técnico: Filtración y Almacenamiento</h4>
+          <p>Visores acrílicos transparentes mostrando la columna interna de decantación (Módulo 2) y la reserva hídrica (Módulo 3).</p>
+        </div>
+      </div>
+
+      <div class="media-card">
+        <img src="./render_03_detalle_filtro_riego.png" alt="Detalle Filtro Multicapa y Riego" />
+        <div class="media-card-body">
+          <h4>Filtro de Impurezas Multicapa y Riego</h4>
+          <p>Cartucho transparente con lecho estratificado (carbón activado, arena sílice y grava), llave de paso azul y jardinera.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+  <script>
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x142231);
+    scene.fog = new THREE.FogExp2(0x142231, 0.025);
+
+    const camera = new THREE.PerspectiveCamera(36, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(-0.3, 2.5, 9.2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0.1, 1.35, 0.0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxPolarAngle = Math.PI / 2 + 0.05;
+    controls.minDistance = 2.0;
+    controls.maxDistance = 18.0;
+
+    // Iluminación
+    const hemiLight = new THREE.HemisphereLight(0xddeeff, 0x203020, 0.85);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff8eb, 1.35);
+    sunLight.position.set(5, 9, 7);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 25;
+    const d = 6.5;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    scene.add(sunLight);
+
+    // Luz interna del tanque para resaltar el agua azul
+    const tankLight = new THREE.PointLight(0x00b4ff, 1.4, 2.5);
+    tankLight.position.set(0.45, 1.1, 0.1);
+    scene.add(tankLight);
+
+    // Utilidad para crear texturas Canvas dinámicas nítidas (Carteles y Etiquetas)
+    function makeSignTexture(title1, title2, sub1, sub2, isMain = false) {
+      const c = document.createElement('canvas');
+      c.width = isMain ? 1024 : 512;
+      c.height = isMain ? 360 : 160;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#f6f9fc';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.strokeStyle = '#0a76be';
+      ctx.lineWidth = isMain ? 10 : 8;
+      ctx.strokeRect(4, 4, c.width - 8, c.height - 8);
+
+      if (isMain) {
+        // Gota azul + hoja verde
+        ctx.fillStyle = '#0a76be';
+        ctx.beginPath();
+        ctx.arc(165, 200, 75, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(95, 175);
+        ctx.lineTo(165, 55);
+        ctx.lineTo(235, 175);
+        ctx.fill();
+
+        ctx.fillStyle = '#4cb22b';
+        ctx.beginPath();
+        ctx.ellipse(180, 210, 48, 28, -0.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.font = '900 105px Segoe UI, Arial';
+        ctx.fillStyle = '#0a60a8';
+        ctx.fillText('AQUA', 285, 155);
+        ctx.fillStyle = '#4cb22b';
+        ctx.fillText('PACK', 605, 155);
+
+        ctx.font = '700 30px Segoe UI, Arial';
+        ctx.fillStyle = '#222a32';
+        ctx.fillText(sub1, 290, 225);
+        ctx.fillText(sub2, 310, 270);
+      } else {
+        ctx.fillStyle = '#0a76be';
+        ctx.fillRect(0, 0, c.width, 14);
+        ctx.font = '800 34px Segoe UI, Arial';
+        ctx.fillStyle = '#1b242c';
+        ctx.textAlign = 'center';
+        if (title2) {
+          ctx.fillText(title1, c.width / 2, 72);
+          ctx.fillText(title2, c.width / 2, 118);
+        } else {
+          ctx.fillText(title1, c.width / 2, 95);
+        }
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.anisotropy = 4;
+      return tex;
+    }
+
+    // Construcción del Gemelo Digital 3D Interactivo (Funciona en GitHub Pages y en local sin servidor)
+    const rootGroup = new THREE.Group();
+    scene.add(rootGroup);
+
+    const matStucco = new THREE.MeshStandardMaterial({ color: 0xeae6df, roughness: 0.75 });
+    const matWood = new THREE.MeshStandardMaterial({ color: 0x8c5832, roughness: 0.55 });
+    const matRoof = new THREE.MeshStandardMaterial({ color: 0x3b4248, metalness: 0.7, roughness: 0.35 });
+    const matDarkFrame = new THREE.MeshStandardMaterial({ color: 0x15181b, metalness: 0.8, roughness: 0.25 });
+    const matTankHDPE = new THREE.MeshStandardMaterial({ color: 0x282e34, metalness: 0.15, roughness: 0.4 });
+    const matPVC = new THREE.MeshStandardMaterial({ color: 0xf2f5f8, roughness: 0.2 });
+    const matGlass = new THREE.MeshPhysicalMaterial({
+      color: 0xd8f0ff, transparent: true, opacity: 0.24, roughness: 0.05, transmission: 0.7
+    });
+    const matWater = new THREE.MeshPhysicalMaterial({
+      color: 0x0588d8, emissive: 0x024477, emissiveIntensity: 0.35,
+      transparent: true, opacity: 0.78, roughness: 0.08
+    });
+    const matStream = new THREE.MeshBasicMaterial({ color: 0x38c4ff, transparent: true, opacity: 0.88 });
+    const matGrass = new THREE.MeshStandardMaterial({ color: 0x265818, roughness: 0.85 });
+    const matGravel = new THREE.MeshStandardMaterial({ color: 0x62666a, roughness: 0.8 });
+    const matConcrete = new THREE.MeshStandardMaterial({ color: 0xc2b8a8, roughness: 0.7 });
+    const matLeaf = new THREE.MeshStandardMaterial({ color: 0x2e6f1e, roughness: 0.55 });
+    const matValveBlue = new THREE.MeshStandardMaterial({ color: 0x0d62d8, roughness: 0.25 });
+
+    // Base y Muro de fondo
+    const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.38, 4.2), matDarkFrame);
+    baseMesh.position.set(0, -0.19, 0);
+    baseMesh.receiveShadow = true;
+    rootGroup.add(baseMesh);
+
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(9.2, 4.2, 0.18), new THREE.MeshStandardMaterial({ color: 0x999792, roughness: 0.7 }));
+    backWall.position.set(0, 2.0, -1.85);
+    backWall.receiveShadow = true;
+    rootGroup.add(backWall);
+
+    // Cartel Principal AQUAPACK
+    const mainSignTex = makeSignTexture('', '', 'SISTEMA MODULAR PARA LA CAPTACIÓN', 'Y REUTILIZACIÓN DE AGUA DE LLUVIA', true);
+    const mainSign = new THREE.Mesh(
+      new THREE.BoxGeometry(4.5, 1.5, 0.08),
+      [matPVC, matPVC, matPVC, matPVC, new THREE.MeshBasicMaterial({ map: mainSignTex }), matPVC]
+    );
+    mainSign.position.set(1.35, 3.15, -1.72);
+    rootGroup.add(mainSign);
+
+    // Casa Residencial (Izquierda)
+    const houseBody = new THREE.Mesh(new THREE.BoxGeometry(3.0, 2.5, 2.4), matStucco);
+    houseBody.position.set(-2.8, 1.25, -0.35);
+    houseBody.castShadow = true;
+    houseBody.receiveShadow = true;
+    rootGroup.add(houseBody);
+
+    // Revestimiento de listones de madera
+    const woodPanel = new THREE.Mesh(new THREE.BoxGeometry(0.85, 2.45, 0.08), matWood);
+    woodPanel.position.set(-3.85, 1.22, 0.88);
+    rootGroup.add(woodPanel);
+
+    // Ventana doble hoja
+    const winFrame = new THREE.Mesh(new THREE.BoxGeometry(1.12, 1.15, 0.1), matDarkFrame);
+    winFrame.position.set(-2.3, 1.25, 0.86);
+    rootGroup.add(winFrame);
+    const winPane = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.03, 0.12), new THREE.MeshStandardMaterial({ color: 0x16222f, roughness: 0.1, metalness: 0.5 }));
+    winPane.position.set(-2.3, 1.25, 0.86);
+    rootGroup.add(winPane);
+
+    // Techo de Calamina Corrugada
+    const roofGroup = new THREE.Group();
+    roofGroup.position.set(-2.68, 2.98, 0.25);
+    roofGroup.rotation.x = 0.52;
+    const roofPlate = new THREE.Mesh(new THREE.BoxGeometry(3.55, 0.06, 2.1), matRoof);
+    roofPlate.castShadow = true;
+    roofGroup.add(roofPlate);
+    for (let ix = -1.7; ix <= 1.7; ix += 0.14) {
+      const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.1, 8), matRoof);
+      rib.rotation.x = Math.PI / 2;
+      rib.position.set(ix, 0.035, 0);
+      roofGroup.add(rib);
+    }
+    rootGroup.add(roofGroup);
+
+    // Canaleta PVC Blanca
+    const gutter = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 3.6, 16, 1, false, 0, Math.PI), matPVC);
+    gutter.rotation.z = Math.PI / 2;
+    gutter.rotation.x = Math.PI;
+    gutter.position.set(-2.62, 2.40, 1.18);
+    rootGroup.add(gutter);
+
+    // Tanque Modular Central AQUAPACK (Con 2 cámaras visibles)
+    const tx = 0.45, tz = -0.05;
+    // Estructura del tanque con aberturas para visores
+    const tankBack = new THREE.Mesh(new THREE.BoxGeometry(1.68, 2.15, 0.12), matTankHDPE);
+    tankBack.position.set(tx, 1.15, tz - 0.46);
+    rootGroup.add(tankBack);
+    const tankLeft = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.15, 1.04), matTankHDPE);
+    tankLeft.position.set(tx - 0.77, 1.15, tz);
+    rootGroup.add(tankLeft);
+    const tankRight = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.15, 1.04), matTankHDPE);
+    tankRight.position.set(tx + 0.77, 1.15, tz);
+    rootGroup.add(tankRight);
+
+    // Pilares y vigas frontales del tanque
+    const fz = tz + 0.46;
+    const pLeft = new THREE.Mesh(new THREE.BoxGeometry(0.36, 2.15, 0.12), matTankHDPE);
+    pLeft.position.set(tx - 0.66, 1.15, fz);
+    rootGroup.add(pLeft);
+    const pRight = new THREE.Mesh(new THREE.BoxGeometry(0.36, 2.15, 0.12), matTankHDPE);
+    pRight.position.set(tx + 0.66, 1.15, fz);
+    rootGroup.add(pRight);
+
+    const beamBot = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.22, 0.12), matTankHDPE);
+    beamBot.position.set(tx, 0.19, fz);
+    rootGroup.add(beamBot);
+    const beamMid = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.38, 0.12), matTankHDPE);
+    beamMid.position.set(tx, 1.07, fz);
+    rootGroup.add(beamMid);
+    const beamTop = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.44, 0.12), matTankHDPE);
+    beamTop.position.set(tx, 2.01, fz);
+    rootGroup.add(beamTop);
+
+    // Bandeja divisoria interna entre Filtración y Almacenamiento
+    const midTray = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 0.9), matTankHDPE);
+    midTray.position.set(tx, 1.12, tz);
+    rootGroup.add(midTray);
+
+    // Tapa superior circular negra
+    const topLid = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.16, 24), matDarkFrame);
+    topLid.position.set(tx, 2.30, tz);
+    rootGroup.add(topLid);
+
+    // Visores acrílicos frontales
+    const visorSup = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.54, 0.02), matGlass);
+    visorSup.position.set(tx, 1.53, fz + 0.02);
+    rootGroup.add(visorSup);
+    const visorInf = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.60, 0.02), matGlass);
+    visorInf.position.set(tx, 0.58, fz + 0.02);
+    rootGroup.add(visorInf);
+
+    // Columna interna de filtrado (Módulo 2)
+    const innerCol = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.52, 20), matGlass);
+    innerCol.position.set(tx + 0.05, 1.53, tz);
+    rootGroup.add(innerCol);
+
+    // Volúmenes de Agua Animables dentro del Tanque
+    const waterMod2 = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.38, 0.78), matWater);
+    waterMod2.position.set(tx, 1.46, tz);
+    rootGroup.add(waterMod2);
+
+    const waterMod3 = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.48, 0.78), matWater);
+    waterMod3.position.set(tx, 0.53, tz);
+    rootGroup.add(waterMod3);
+
+    // Paso 4: Filtro de Impurezas Externo Multicapa (X = 2.05)
+    const fx = 2.05, fz_p = 0.10;
+    const filterCapTop = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.16, 24), matDarkFrame);
+    filterCapTop.position.set(fx, 1.66, fz_p);
+    rootGroup.add(filterCapTop);
+    const filterCapBot = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.14, 24), matDarkFrame);
+    filterCapBot.position.set(fx, 0.99, fz_p);
+    rootGroup.add(filterCapBot);
+    const filterGlass = new THREE.Mesh(new THREE.CylinderGeometry(0.185, 0.185, 0.52, 24), matGlass);
+    filterGlass.position.set(fx, 1.32, fz_p);
+    rootGroup.add(filterGlass);
+
+    // 4 Capas del Lecho Filtrante (Carbón, Sílice, Grava Fina, Grava Gruesa)
+    const layerColors = [0x1c2024, 0xc8a870, 0x827b70, 0x55585c];
+    layerColors.forEach((col, i) => {
+      const lyr = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.155, 0.155, 0.115, 20),
+        new THREE.MeshStandardMaterial({ color: col, roughness: 0.75 })
+      );
+      lyr.position.set(fx, 1.50 - i * 0.12, fz_p);
+      rootGroup.add(lyr);
+    });
+
+    // Tuberías de conexión PVC
+    function addPipeSegment(p1, p2, r = 0.048, mat = matPVC) {
+      const v1 = new THREE.Vector3(...p1);
+      const v2 = new THREE.Vector3(...p2);
+      const len = v1.distanceTo(v2);
+      const mid = v1.clone().add(v2).multiplyScalar(0.5);
+      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 16), mat);
+      cyl.position.copy(mid);
+      cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v2.clone().sub(v1).normalize());
+      rootGroup.add(cyl);
+      return cyl;
+    }
+    addPipeSegment([-0.92, 2.35, 1.18], [-0.92, 1.88, 1.18]);
+    addPipeSegment([-0.92, 1.88, 1.18], [-0.92, 1.88, 0.15]);
+    addPipeSegment([-0.92, 1.88, 0.15], [-0.35, 1.88, 0.15]);
+    addPipeSegment([-0.72, 1.88, 0.15], [-0.72, 0.55, 0.15], 0.044, matWater);
+    addPipeSegment([-0.72, 0.55, 0.15], [-0.35, 0.55, 0.15]);
+
+    addPipeSegment([1.25, 1.82, fz_p], [2.05, 1.82, fz_p]);
+    addPipeSegment([2.05, 1.82, fz_p], [2.05, 1.72, fz_p]);
+    addPipeSegment([1.25, 0.52, fz_p], [2.05, 0.52, fz_p]);
+    addPipeSegment([2.05, 0.52, fz_p], [2.05, 0.92, fz_p]);
+    addPipeSegment([2.05, 0.90, fz_p], [3.35, 0.90, fz_p]);
+    addPipeSegment([3.35, 0.90, fz_p], [3.35, 0.72, fz_p]);
+
+    // Válvula Esférica con Manija Azul Interactiva
+    const valveBody = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.18, 16), matPVC);
+    valveBody.rotation.z = Math.PI / 2;
+    valveBody.position.set(2.58, 0.90, fz_p);
+    rootGroup.add(valveBody);
+
+    const valveHandle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.05), matValveBlue);
+    valveHandle.position.set(2.58, 1.02, fz_p);
+    rootGroup.add(valveHandle);
+
+    // Chorro de Riego hacia Jardinera
+    const irrigationStream = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.35, 12), matStream);
+    irrigationStream.position.set(3.35, 0.55, fz_p);
+    rootGroup.add(irrigationStream);
+
+    // Jardinera de Concreto y Árbol (Derecha)
+    const planter = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.62, 1.05), matConcrete);
+    planter.position.set(3.55, 0.31, fz_p);
+    planter.castShadow = true;
+    rootGroup.add(planter);
+
+    const planterWater = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.05, 0.88), matWater);
+    planterWater.position.set(3.55, 0.61, fz_p);
+    rootGroup.add(planterWater);
+
+    // Árbol y Jardín
+    const lawn = new THREE.Mesh(new THREE.BoxGeometry(5.1, 0.06, 3.6), matGrass);
+    lawn.position.set(2.1, 0.03, 0);
+    lawn.receiveShadow = true;
+    rootGroup.add(lawn);
+
+    const gravelPath = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.055, 3.55), matGravel);
+    gravelPath.position.set(-0.88, 0.028, 0);
+    rootGroup.add(gravelPath);
+
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 1.85, 12), matWood);
+    trunk.position.set(3.55, 0.92, -0.85);
+    rootGroup.add(trunk);
+
+    const crownGroup = new THREE.Group();
+    const crownPositions = [
+      [0, 2.2, 0, 0.65], [-0.35, 2.0, 0.25, 0.48], [0.38, 2.05, 0.2, 0.5],
+      [0.2, 2.45, -0.2, 0.52], [-0.25, 2.4, -0.15, 0.48], [0, 1.85, 0.35, 0.45]
+    ];
+    crownPositions.forEach(([cx, cy, cz, cr]) => {
+      const sph = new THREE.Mesh(new THREE.DodecahedronGeometry(cr, 1), matLeaf);
+      sph.position.set(3.55 + cx, cy, -0.85 + cz);
+      sph.castShadow = true;
+      crownGroup.add(sph);
+    });
+    rootGroup.add(crownGroup);
+
+    // Placas numeradas 1 a 5
+    function addCallout(title1, title2, x, y, z, w = 0.95, h = 0.30) {
+      const tex = makeSignTexture(title1, title2, '', '', false);
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, 0.03),
+        [matPVC, matPVC, matPVC, matPVC, new THREE.MeshBasicMaterial({ map: tex }), matPVC]
+      );
+      m.position.set(x, y, z);
+      rootGroup.add(m);
+    }
+    addCallout('1. CAPTACIÓN', 'DEL AGUA DE LLUVIA', -2.35, 3.25, 0.25, 1.18, 0.36);
+    addCallout('2. FILTRACIÓN', '', tx, 1.98, fz + 0.06, 0.82, 0.25);
+    addCallout('3. ALMACENAMIENTO', '', tx, 1.07, fz + 0.06, 0.88, 0.25);
+    addCallout('4. FILTRO', 'DE IMPUREZAS', 2.12, 2.08, fz_p, 0.95, 0.32);
+    addCallout('5. USO DEL AGUA', 'REUTILIZADA', 3.48, 1.45, fz_p, 1.02, 0.33);
+
+    // Partículas de lluvia y flechas animadas sobre el tejado
+    const rainDrops = [];
+    const dropGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.18, 6);
+    for (let i = 0; i < 65; i++) {
+      const drop = new THREE.Mesh(dropGeo, matStream);
+      drop.position.set(-4.2 + Math.random() * 3.1, 2.6 + Math.random() * 1.8, -0.5 + Math.random() * 1.6);
+      scene.add(drop);
+      rainDrops.push(drop);
+    }
+
+    // Estado de la simulación interactiva
+    let valveOpen = true;
+    let autoCycle = true;
+    let simTime = 0;
+
+    const stagesInfo = [
+      {
+        title: "Vista General — Sistema AQUAPACK",
+        desc: "Sistema modular integral para captar, filtrar, almacenar y reutilizar el agua de lluvia en actividades no potables (riego, limpieza y sanitarios).",
+        cam: [-0.3, 2.5, 9.2], target: [0.1, 1.35, 0.0]
+      },
+      {
+        title: "1. Captación del Agua de Lluvia",
+        desc: "El techo corrugado de calamina intercepta la precipitación pluvial y la conduce mediante pendiente hacia la canaleta colectora de PVC y la bajante.",
+        cam: [-2.4, 3.3, 4.8], target: [-2.3, 2.4, 0.5]
+      },
+      {
+        title: "2. Filtración Primaria (Módulo Superior)",
+        desc: "El agua ingresa a la cámara superior del tanque modular donde la columna central retiene hojas y sólidos mayores antes de pasar a la reserva.",
+        cam: [0.45, 1.85, 3.6], target: [0.45, 1.55, 0.0]
+      },
+      {
+        title: "3. Almacenamiento Modular (Módulo Inferior)",
+        desc: "Cámara estanca de polietileno de alta densidad (HDPE) con diseño apilable que permite ampliar la capacidad hídrica según las necesidades del usuario.",
+        cam: [0.45, 0.95, 3.6], target: [0.45, 0.65, 0.0]
+      },
+      {
+        title: "4. Filtro de Impurezas Multicapa",
+        desc: "Cartucho externo transparente con 4 estratos granulométricos: carbón activado, arena sílice, grava fina y grava gruesa para retener sedimentos finos.",
+        cam: [2.05, 1.55, 3.1], target: [2.05, 1.32, 0.1]
+      },
+      {
+        title: "5. Uso del Agua Reutilizada",
+        desc: "Controlada por la llave de paso esférica azul, el agua tratada se distribuye hacia las áreas verdes, jardines o redes de servicios no potables.",
+        cam: [3.25, 1.35, 3.4], target: [3.15, 0.72, 0.1]
+      }
+    ];
+
+    let targetCamPos = new THREE.Vector3(-0.3, 2.5, 9.2);
+    let targetLookAt = new THREE.Vector3(0.1, 1.35, 0.0);
+    let isTransitioning = false;
+
+    function focusStage(idx, btnEl) {
+      document.querySelectorAll('.stage-btn').forEach(b => b.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+      const info = stagesInfo[idx];
+      document.getElementById('stage-title').textContent = info.title;
+      document.getElementById('stage-desc').textContent = info.desc;
+      targetCamPos.set(...info.cam);
+      targetLookAt.set(...info.target);
+      isTransitioning = true;
+    }
+
+    function updateSim() {
+      const rainVal = parseInt(document.getElementById('slider-rain').value, 10);
+      const levelVal = parseInt(document.getElementById('slider-level').value, 10);
+      document.getElementById('lbl-rain').textContent = rainVal + '%';
+      document.getElementById('lbl-level').textContent = levelVal + '%';
+
+      const flowLpm = ((rainVal / 100) * 21.6).toFixed(1);
+      const volLiters = Math.round((levelVal / 100) * 2000);
+      document.getElementById('met-flow').textContent = flowLpm + ' L/min';
+      document.getElementById('met-vol').textContent = volLiters.toLocaleString() + ' L';
+
+      const s = Math.max(0.12, levelVal / 100);
+      waterMod3.scale.y = s;
+      waterMod3.position.y = 0.29 + (0.48 * s) / 2;
+      waterMod2.scale.y = Math.max(0.15, Math.min(1, s * 1.05));
+      waterMod2.position.y = 1.27 + (0.38 * waterMod2.scale.y) / 2;
+    }
+
+    function toggleValve() {
+      valveOpen = !valveOpen;
+      const btn = document.getElementById('btn-valve');
+      const st = document.getElementById('met-status');
+      if (valveOpen) {
+        btn.textContent = '🔧 Válvula: ABIERTA';
+        btn.className = 'action-btn green';
+        st.textContent = 'ACTIVO';
+        st.style.color = '#4cb22b';
+      } else {
+        btn.textContent = '🔒 Válvula: CERRADA';
+        btn.className = 'action-btn';
+        st.textContent = 'EN PAUSA';
+        st.style.color = '#ffa726';
+      }
+    }
+
+    function toggleAutoCycle() {
+      autoCycle = !autoCycle;
+      document.getElementById('btn-anim').textContent = autoCycle ? '⏸️ Ciclo Auto' : '▶️ Ciclo Auto';
+    }
+
+    // Animación en bucle a 60 FPS
+    function animate() {
+      requestAnimationFrame(animate);
+      simTime += 0.025;
+
+      const rainIntensity = parseInt(document.getElementById('slider-rain').value, 10) / 100;
+      rainDrops.forEach((d, i) => {
+        d.visible = (i / rainDrops.length) < rainIntensity;
+        if (d.visible) {
+          d.position.y -= 0.085;
+          if (d.position.y < 2.55) {
+            d.position.y = 4.3;
+          }
+        }
+      });
+
+      if (autoCycle) {
+        const wave = 0.55 + 0.42 * Math.sin(simTime * 0.7);
+        document.getElementById('slider-level').value = Math.round(wave * 100);
+        updateSim();
+      }
+
+      // Animación de válvula y chorro de riego
+      const targetRot = valveOpen ? 0 : Math.PI / 2;
+      valveHandle.rotation.y += (targetRot - valveHandle.rotation.y) * 0.15;
+      irrigationStream.visible = valveOpen;
+      if (valveOpen) {
+        irrigationStream.scale.x = 0.9 + 0.15 * Math.sin(simTime * 8);
+        irrigationStream.scale.z = 0.9 + 0.15 * Math.cos(simTime * 8);
+      }
+
+      if (isTransitioning) {
+        camera.position.lerp(targetCamPos, 0.07);
+        controls.target.lerp(targetLookAt, 0.07);
+        if (camera.position.distanceTo(targetCamPos) < 0.05) {
+          isTransitioning = false;
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+  </script>
+</body>
+</html>
